@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "tiny-item-counters",
+  "version": "${version}",
+  "name": "Tiny Item Counters",
+  "description": "Scales down item stack count numbers in the hotbar and inventory. Supports all GUI scales with clean, non-warped rendering.",
+  "authors": ["qoby"],
+  "contact": {},
+  "license": "CC0-1.0",
+  "icon": "assets/tiny-item-counters/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["qoby.tiny_item_counters.TinyItemCounters"],
+    "client": ["qoby.tiny_item_counters.TinyItemCountersClient"]
+  },
+  "mixins": [
+    "tiny-item-counters.mixins.json",
+    {
+      "config": "tiny-item-counters.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.18.4",
+    "minecraft": ">=1.21 <1.21.6",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

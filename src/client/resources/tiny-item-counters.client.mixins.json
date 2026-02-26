@@ -1,0 +1,9 @@
+{
+  "required": true,
+  "package": "qoby.tiny_item_counters.mixin.client",
+  "compatibilityLevel": "JAVA_21",
+  "client": ["GuiGraphicsMixin"],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
