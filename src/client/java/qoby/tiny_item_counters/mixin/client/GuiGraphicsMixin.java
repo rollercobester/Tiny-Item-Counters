@@ -1,10 +1,10 @@
 package qoby.tiny_item_counters.mixin.client;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.item.ItemStack;
+import org.joml.Matrix3x2fStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -12,11 +12,11 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(GuiGraphics.class)
+@Mixin(DrawContext.class)
 public abstract class GuiGraphicsMixin {
 
     @Shadow
-    public abstract PoseStack pose();
+    public abstract Matrix3x2fStack getMatrices();
 
     /**
      * Clean scale = ceil(guiScale/2) / guiScale. Smallest clean scale above 50%.
@@ -24,15 +24,13 @@ public abstract class GuiGraphicsMixin {
      */
     @Unique
     private static float tinyItemCounters$computeScale(int guiScale) {
-        if (guiScale <= 0)
-            return 0.5f;
+        if (guiScale <= 0) return 0.5f;
         int half = (int) Math.ceil(guiScale / 2.0);
         return (float) half / guiScale;
     }
 
     /**
-     * Offset scales with (1 - scale) - more shrink needs more offset to reach
-     * corner.
+     * Offset scales with (1 - scale) - more shrink needs more offset to reach corner.
      */
     @Unique
     private static void tinyItemCounters$computeOffsets(float scale, float[] out) {
@@ -42,21 +40,14 @@ public abstract class GuiGraphicsMixin {
     }
 
     /**
-     * 1.21 & 1.21.1: Count is drawn inside renderItemDecorations (no separate
-     * renderItemCount).
-     * 1.21.2+: renderItemDecorations calls renderItemCount; we inject here to cover
-     * all versions.
+     * 1.21.6+: drawStackOverlay (was renderItemDecorations). DrawContext uses Matrix3x2fStack.
      */
-    @Inject(method = "renderItemDecorations(Lnet/minecraft/client/gui/Font;Lnet/minecraft/world/item/ItemStack;IILjava/lang/String;)V", at = @At("HEAD"))
-    private void tinyItemCounters$pushScale(Font font, ItemStack stack, int x, int y, String countText,
+    @Inject(method = "drawStackOverlay(Lnet/minecraft/client/font/TextRenderer;Lnet/minecraft/item/ItemStack;IILjava/lang/String;)V", at = @At("HEAD"))
+    private void tinyItemCounters$pushScale(TextRenderer textRenderer, ItemStack stack, int x, int y, String countText,
             CallbackInfo ci) {
-        // Use Window's scale factor - it's correct on load and when Auto; Options can
-        // be stale
-        int guiScale = (int) Math.round(Minecraft.getInstance().getWindow().getGuiScale());
-        if (guiScale <= 0)
-            guiScale = Minecraft.getInstance().options.guiScale().get();
-        if (guiScale <= 0)
-            guiScale = 2; // fallback
+        int guiScale = MinecraftClient.getInstance().getWindow().getScaleFactor();
+        if (guiScale <= 0) guiScale = MinecraftClient.getInstance().options.getGuiScale().getValue();
+        if (guiScale <= 0) guiScale = 2; // fallback
 
         float scale = tinyItemCounters$computeScale(guiScale);
         float[] offsets = new float[2];
@@ -64,23 +55,23 @@ public abstract class GuiGraphicsMixin {
         float offsetX = offsets[0];
         float offsetY = offsets[1];
 
-        int textWidth = font.width(countText);
-        int textHeight = font.lineHeight;
-        int centerX = Math.round(x + textWidth + offsetX);
-        int centerY = Math.round(y + textHeight + offsetY);
-        int backX = x + textWidth;
-        int backY = y + textHeight;
+        int textWidth = textRenderer.getWidth(countText);
+        int textHeight = textRenderer.fontHeight;
+        float centerX = x + textWidth + offsetX;
+        float centerY = y + textHeight + offsetY;
+        float backX = x + textWidth;
+        float backY = y + textHeight;
 
-        PoseStack pose = pose();
-        pose.pushPose();
-        pose.translate(centerX, centerY, 0);
-        pose.scale(scale, scale, 1f);
-        pose.translate(-backX, -backY, 0);
+        Matrix3x2fStack matrices = getMatrices();
+        matrices.pushMatrix();
+        matrices.translate(centerX, centerY);
+        matrices.scale(scale, scale);
+        matrices.translate(-backX, -backY);
     }
 
-    @Inject(method = "renderItemDecorations(Lnet/minecraft/client/gui/Font;Lnet/minecraft/world/item/ItemStack;IILjava/lang/String;)V", at = @At("RETURN"))
-    private void tinyItemCounters$popScale(Font font, ItemStack stack, int x, int y, String countText,
+    @Inject(method = "drawStackOverlay(Lnet/minecraft/client/font/TextRenderer;Lnet/minecraft/item/ItemStack;IILjava/lang/String;)V", at = @At("RETURN"))
+    private void tinyItemCounters$popScale(TextRenderer textRenderer, ItemStack stack, int x, int y, String countText,
             CallbackInfo ci) {
-        pose().popPose();
+        getMatrices().popMatrix();
     }
 }
