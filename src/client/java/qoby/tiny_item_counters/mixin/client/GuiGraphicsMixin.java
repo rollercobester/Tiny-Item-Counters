@@ -1,22 +1,23 @@
 package qoby.tiny_item_counters.mixin.client;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.item.ItemStack;
+import org.joml.Matrix3x2fStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import qoby.tiny_item_counters.TinyItemCountersConfig;
 
-@Mixin(GuiGraphics.class)
+@Mixin(DrawContext.class)
 public abstract class GuiGraphicsMixin {
 
     @Shadow
-    public abstract PoseStack pose();
+    public abstract Matrix3x2fStack getMatrices();
 
     /**
      * Clean scale = ceil(guiScale/2) / guiScale. Smallest clean scale above 50%.
@@ -30,57 +31,87 @@ public abstract class GuiGraphicsMixin {
         return (float) half / guiScale;
     }
 
-    /**
-     * Offset scales with (1 - scale) - more shrink needs more offset to reach
-     * corner.
-     */
     @Unique
-    private static void tinyItemCounters$computeOffsets(float scale, float[] out) {
-        float shrink = 1f - scale;
-        out[0] = 14f * shrink;
-        out[1] = 5f * shrink;
-    }
-
-    /**
-     * 1.21 & 1.21.1: Count is drawn inside renderItemDecorations (no separate
-     * renderItemCount).
-     * 1.21.2+: renderItemDecorations calls renderItemCount; we inject here to cover
-     * all versions.
-     */
-    @Inject(method = "renderItemDecorations(Lnet/minecraft/client/gui/Font;Lnet/minecraft/world/item/ItemStack;IILjava/lang/String;)V", at = @At("HEAD"))
-    private void tinyItemCounters$pushScale(Font font, ItemStack stack, int x, int y, String countText,
-            CallbackInfo ci) {
-        // Use Window's scale factor - it's correct on load and when Auto; Options can
-        // be stale
-        int guiScale = (int) Math.round(Minecraft.getInstance().getWindow().getGuiScale());
+    private static int tinyItemCounters$getGuiScale() {
+        int guiScale = MinecraftClient.getInstance().getWindow().getScaleFactor();
         if (guiScale <= 0)
-            guiScale = Minecraft.getInstance().options.guiScale().get();
+            guiScale = MinecraftClient.getInstance().options.getGuiScale().getValue();
         if (guiScale <= 0)
             guiScale = 2; // fallback
-
-        float scale = tinyItemCounters$computeScale(guiScale);
-        float[] offsets = new float[2];
-        tinyItemCounters$computeOffsets(scale, offsets);
-        float offsetX = offsets[0];
-        float offsetY = offsets[1];
-
-        int textWidth = font.width(countText);
-        int textHeight = font.lineHeight;
-        int centerX = Math.round(x + textWidth + offsetX);
-        int centerY = Math.round(y + textHeight + offsetY);
-        int backX = x + textWidth;
-        int backY = y + textHeight;
-
-        PoseStack pose = pose();
-        pose.pushPose();
-        pose.translate(centerX, centerY, 0);
-        pose.scale(scale, scale, 1f);
-        pose.translate(-backX, -backY, 0);
+        return guiScale;
     }
 
-    @Inject(method = "renderItemDecorations(Lnet/minecraft/client/gui/Font;Lnet/minecraft/world/item/ItemStack;IILjava/lang/String;)V", at = @At("RETURN"))
-    private void tinyItemCounters$popScale(Font font, ItemStack stack, int x, int y, String countText,
+    /**
+     * 1.21.6+: replaces renderItemCount. Cancels vanilla draw and redraws scaled.
+     * Anchor is fixed at slot bottom-right (x+17, y+17); drawX/drawY are derived
+     * from it.
+     */
+    @Inject(method = "drawStackCount(Lnet/minecraft/client/font/TextRenderer;Lnet/minecraft/item/ItemStack;IILjava/lang/String;)V", at = @At("HEAD"), cancellable = true)
+    private void tinyItemCounters$renderCountScaled(TextRenderer textRenderer, ItemStack stack, int x, int y,
+            String countText,
             CallbackInfo ci) {
-        pose().popPose();
+        if (!TinyItemCountersConfig.shrinkItemCount)
+            return;
+
+        String text = countText != null ? countText : (stack.getCount() != 1 ? String.valueOf(stack.getCount()) : null);
+        if (text == null) {
+            ci.cancel();
+            return;
+        }
+
+        int guiScale = tinyItemCounters$getGuiScale();
+        float scale = tinyItemCounters$computeScale(guiScale);
+
+        float anchorX = x + 17;
+        float anchorY = y + 17;
+
+        int drawX = Math.round(anchorX) - textRenderer.getWidth(text) - 2;
+        int drawY = Math.round(anchorY) - textRenderer.fontHeight - 1;
+
+        Matrix3x2fStack matrices = getMatrices();
+        matrices.pushMatrix();
+        matrices.translate(anchorX, anchorY);
+        matrices.scale(scale, scale);
+        matrices.translate(-anchorX, -anchorY);
+
+        ((DrawContext) (Object) this).drawText(textRenderer, text, drawX, drawY, 0xFFFFFFFF, true);
+
+        matrices.popMatrix();
+        ci.cancel();
+    }
+
+    /**
+     * Push a 2/3 uniform scale anchored to the bottom-right corner of the slot
+     * (x+16, y+16). Only active when the item has a durability bar.
+     */
+    @Inject(method = "drawStackOverlay(Lnet/minecraft/client/font/TextRenderer;Lnet/minecraft/item/ItemStack;IILjava/lang/String;)V", at = @At("HEAD"))
+    private void tinyItemCounters$pushBarScale(TextRenderer textRenderer, ItemStack stack, int x, int y,
+            String countText,
+            CallbackInfo ci) {
+        if (!stack.isItemBarVisible())
+            return;
+        if (!TinyItemCountersConfig.shrinkDurabilityBar)
+            return;
+
+        float scale = 2f / 3f;
+        float anchorX = x + 16;
+        float anchorY = y + 16;
+
+        Matrix3x2fStack matrices = getMatrices();
+        matrices.pushMatrix();
+        matrices.translate(anchorX, anchorY);
+        matrices.scale(scale, scale);
+        matrices.translate(-anchorX, -anchorY);
+    }
+
+    @Inject(method = "drawStackOverlay(Lnet/minecraft/client/font/TextRenderer;Lnet/minecraft/item/ItemStack;IILjava/lang/String;)V", at = @At("RETURN"))
+    private void tinyItemCounters$popBarScale(TextRenderer textRenderer, ItemStack stack, int x, int y,
+            String countText,
+            CallbackInfo ci) {
+        if (!stack.isItemBarVisible())
+            return;
+        if (!TinyItemCountersConfig.shrinkDurabilityBar)
+            return;
+        getMatrices().popMatrix();
     }
 }
