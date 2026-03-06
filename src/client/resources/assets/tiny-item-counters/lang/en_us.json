@@ -1,0 +1,9 @@
+{
+  "tiny-item-counters.config.title": "Tiny Item Counters",
+
+  "tiny-item-counters.config.option.shrink_item_count": "Shrink Item Count",
+  "tiny-item-counters.config.option.shrink_item_count.desc": "Scale down the stack count number displayed on items in the hotbar and inventory.",
+
+  "tiny-item-counters.config.option.shrink_durability_bar": "Shrink Durability Bar",
+  "tiny-item-counters.config.option.shrink_durability_bar.desc": "Scale down the durability bar displayed on damaged tools and items."
+}

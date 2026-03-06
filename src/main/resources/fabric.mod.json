@@ -11,10 +11,10 @@
   "environment": "*",
   "entrypoints": {
     "main": ["qoby.tiny_item_counters.TinyItemCounters"],
-    "client": ["qoby.tiny_item_counters.TinyItemCountersClient"]
+    "client": ["qoby.tiny_item_counters.TinyItemCountersClient"],
+    "modmenu": ["qoby.tiny_item_counters.ModMenuIntegration"]
   },
   "mixins": [
-    "tiny-item-counters.mixins.json",
     {
       "config": "tiny-item-counters.client.mixins.json",
       "environment": "client"
@@ -22,8 +22,11 @@
   ],
   "depends": {
     "fabricloader": ">=0.18.4",
-    "minecraft": ">=1.21 <1.21.6",
+    "minecraft": ">=1.21 <=1.21.11",
     "java": ">=21",
     "fabric-api": "*"
+  },
+  "suggests": {
+    "modmenu": "*"
   }
 }
