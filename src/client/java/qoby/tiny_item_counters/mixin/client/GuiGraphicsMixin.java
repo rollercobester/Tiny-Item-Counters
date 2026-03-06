@@ -19,9 +19,6 @@ public abstract class GuiGraphicsMixin {
     @Shadow
     public abstract Matrix3x2fStack getMatrices();
 
-    @Shadow
-    public abstract int drawText(TextRenderer textRenderer, String text, int x, int y, int color, boolean shadow);
-
     /**
      * Clean scale = ceil(guiScale/2) / guiScale. Smallest clean scale above 50%.
      * Examples: 2->50%, 3->66%, 4->50%, 5->60%, 6->50%, 7->57%
