@@ -25,7 +25,8 @@ public abstract class GuiGraphicsMixin {
      */
     @Unique
     private static float tinyItemCounters$computeScale(int guiScale) {
-        if (guiScale <= 0) return 0.5f;
+        if (guiScale <= 0)
+            return 0.5f;
         int half = (int) Math.ceil(guiScale / 2.0);
         return (float) half / guiScale;
     }
@@ -33,19 +34,24 @@ public abstract class GuiGraphicsMixin {
     @Unique
     private static int tinyItemCounters$getGuiScale() {
         int guiScale = MinecraftClient.getInstance().getWindow().getScaleFactor();
-        if (guiScale <= 0) guiScale = MinecraftClient.getInstance().options.getGuiScale().getValue();
-        if (guiScale <= 0) guiScale = 2; // fallback
+        if (guiScale <= 0)
+            guiScale = MinecraftClient.getInstance().options.getGuiScale().getValue();
+        if (guiScale <= 0)
+            guiScale = 2; // fallback
         return guiScale;
     }
 
     /**
      * 1.21.6+: replaces renderItemCount. Cancels vanilla draw and redraws scaled.
-     * Anchor is fixed at slot bottom-right (x+17, y+17); drawX/drawY are derived from it.
+     * Anchor is fixed at slot bottom-right (x+17, y+17); drawX/drawY are derived
+     * from it.
      */
     @Inject(method = "drawStackCount(Lnet/minecraft/client/font/TextRenderer;Lnet/minecraft/item/ItemStack;IILjava/lang/String;)V", at = @At("HEAD"), cancellable = true)
-    private void tinyItemCounters$renderCountScaled(TextRenderer textRenderer, ItemStack stack, int x, int y, String countText,
+    private void tinyItemCounters$renderCountScaled(TextRenderer textRenderer, ItemStack stack, int x, int y,
+            String countText,
             CallbackInfo ci) {
-        if (!TinyItemCountersConfig.shrinkItemCount) return;
+        if (!TinyItemCountersConfig.shrinkItemCount)
+            return;
 
         String text = countText != null ? countText : (stack.getCount() != 1 ? String.valueOf(stack.getCount()) : null);
         if (text == null) {
@@ -59,8 +65,8 @@ public abstract class GuiGraphicsMixin {
         float anchorX = x + 17;
         float anchorY = y + 17;
 
-        int drawX = Math.round(anchorX) - textRenderer.getWidth(text);
-        int drawY = Math.round(anchorY) - textRenderer.fontHeight;
+        int drawX = Math.round(anchorX) - textRenderer.getWidth(text) - 2;
+        int drawY = Math.round(anchorY) - textRenderer.fontHeight - 1;
 
         Matrix3x2fStack matrices = getMatrices();
         matrices.pushMatrix();
@@ -79,10 +85,13 @@ public abstract class GuiGraphicsMixin {
      * (x+16, y+16). Only active when the item has a durability bar.
      */
     @Inject(method = "drawStackOverlay(Lnet/minecraft/client/font/TextRenderer;Lnet/minecraft/item/ItemStack;IILjava/lang/String;)V", at = @At("HEAD"))
-    private void tinyItemCounters$pushBarScale(TextRenderer textRenderer, ItemStack stack, int x, int y, String countText,
+    private void tinyItemCounters$pushBarScale(TextRenderer textRenderer, ItemStack stack, int x, int y,
+            String countText,
             CallbackInfo ci) {
-        if (!stack.isItemBarVisible()) return;
-        if (!TinyItemCountersConfig.shrinkDurabilityBar) return;
+        if (!stack.isItemBarVisible())
+            return;
+        if (!TinyItemCountersConfig.shrinkDurabilityBar)
+            return;
 
         float scale = 2f / 3f;
         float anchorX = x + 16;
@@ -96,10 +105,13 @@ public abstract class GuiGraphicsMixin {
     }
 
     @Inject(method = "drawStackOverlay(Lnet/minecraft/client/font/TextRenderer;Lnet/minecraft/item/ItemStack;IILjava/lang/String;)V", at = @At("RETURN"))
-    private void tinyItemCounters$popBarScale(TextRenderer textRenderer, ItemStack stack, int x, int y, String countText,
+    private void tinyItemCounters$popBarScale(TextRenderer textRenderer, ItemStack stack, int x, int y,
+            String countText,
             CallbackInfo ci) {
-        if (!stack.isItemBarVisible()) return;
-        if (!TinyItemCountersConfig.shrinkDurabilityBar) return;
+        if (!stack.isItemBarVisible())
+            return;
+        if (!TinyItemCountersConfig.shrinkDurabilityBar)
+            return;
         getMatrices().popMatrix();
     }
 }
