@@ -7,6 +7,9 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+
 // 26.1+: Screen.render() replaced by Screen.extractRenderState(GuiGraphicsExtractor, ...)
 public class ConfigScreen extends Screen {
 
@@ -62,7 +65,34 @@ public class ConfigScreen extends Screen {
 
     @Override
     public void onClose() {
-        this.minecraft.setScreen(parent);
+        tinyItemCounters$setScreen(parent);
+    }
+
+    /**
+     * Minecraft 26.2 moved screen management from Minecraft to Minecraft.gui.
+     * Reflection keeps this class binary-compatible with both 26.1 and 26.2+.
+     */
+    private void tinyItemCounters$setScreen(Screen screen) {
+        try {
+            Method setScreen = this.minecraft.getClass().getMethod("setScreen", Screen.class);
+            setScreen.invoke(this.minecraft, screen);
+            return;
+        } catch (ReflectiveOperationException ignored) {
+            // 26.2+ has no Minecraft#setScreen; resolve the screen manager below.
+        }
+
+        try {
+            Field guiField = this.minecraft.getClass().getField("gui");
+            Object gui = guiField.get(this.minecraft);
+
+            try {
+                gui.getClass().getMethod("setScreen", Screen.class).invoke(gui, screen);
+            } catch (NoSuchMethodException ignored) {
+                gui.getClass().getMethod("setScreenAndShow", Screen.class).invoke(gui, screen);
+            }
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Unable to close the Tiny Item Counters configuration screen", e);
+        }
     }
 
     private static Component toggleLabel(String key, boolean value) {
