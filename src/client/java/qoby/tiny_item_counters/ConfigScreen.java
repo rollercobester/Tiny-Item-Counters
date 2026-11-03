@@ -1,12 +1,13 @@
 package qoby.tiny_item_counters;
 
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.tooltip.Tooltip;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.screen.ScreenTexts;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.CommonComponents;
+import net.minecraft.network.chat.Component;
 
+// 26.1+: Screen.render() replaced by Screen.extractRenderState(GuiGraphicsExtractor, ...)
 public class ConfigScreen extends Screen {
 
     private static final int BUTTON_WIDTH = 200;
@@ -16,7 +17,7 @@ public class ConfigScreen extends Screen {
     private final Screen parent;
 
     public ConfigScreen(Screen parent) {
-        super(Text.translatable("tiny-item-counters.config.title"));
+        super(Component.translatable("tiny-item-counters.config.title"));
         this.parent = parent;
     }
 
@@ -25,47 +26,49 @@ public class ConfigScreen extends Screen {
         int centerX = this.width / 2;
         int startY = this.height / 2 - (BUTTON_HEIGHT * 2 + SPACING) / 2;
 
-        addDrawableChild(ButtonWidget.builder(
+        addRenderableWidget(Button.builder(
                 toggleLabel("tiny-item-counters.config.option.shrink_item_count", TinyItemCountersConfig.shrinkItemCount),
                 button -> {
                     TinyItemCountersConfig.shrinkItemCount = !TinyItemCountersConfig.shrinkItemCount;
                     button.setMessage(toggleLabel("tiny-item-counters.config.option.shrink_item_count", TinyItemCountersConfig.shrinkItemCount));
                     TinyItemCountersConfig.save();
                 })
-                .dimensions(centerX - BUTTON_WIDTH / 2, startY, BUTTON_WIDTH, BUTTON_HEIGHT)
-                .tooltip(Tooltip.of(Text.translatable("tiny-item-counters.config.option.shrink_item_count.desc")))
+                .bounds(centerX - BUTTON_WIDTH / 2, startY, BUTTON_WIDTH, BUTTON_HEIGHT)
+                .tooltip(Tooltip.create(Component.translatable("tiny-item-counters.config.option.shrink_item_count.desc")))
                 .build());
 
-        addDrawableChild(ButtonWidget.builder(
+        addRenderableWidget(Button.builder(
                 toggleLabel("tiny-item-counters.config.option.shrink_durability_bar", TinyItemCountersConfig.shrinkDurabilityBar),
                 button -> {
                     TinyItemCountersConfig.shrinkDurabilityBar = !TinyItemCountersConfig.shrinkDurabilityBar;
                     button.setMessage(toggleLabel("tiny-item-counters.config.option.shrink_durability_bar", TinyItemCountersConfig.shrinkDurabilityBar));
                     TinyItemCountersConfig.save();
                 })
-                .dimensions(centerX - BUTTON_WIDTH / 2, startY + BUTTON_HEIGHT + SPACING, BUTTON_WIDTH, BUTTON_HEIGHT)
-                .tooltip(Tooltip.of(Text.translatable("tiny-item-counters.config.option.shrink_durability_bar.desc")))
+                .bounds(centerX - BUTTON_WIDTH / 2, startY + BUTTON_HEIGHT + SPACING, BUTTON_WIDTH, BUTTON_HEIGHT)
+                .tooltip(Tooltip.create(Component.translatable("tiny-item-counters.config.option.shrink_durability_bar.desc")))
                 .build());
 
-        addDrawableChild(ButtonWidget.builder(ScreenTexts.DONE, button -> close())
-                .dimensions(centerX - BUTTON_WIDTH / 2, startY + (BUTTON_HEIGHT + SPACING) * 2 + SPACING * 2, BUTTON_WIDTH, BUTTON_HEIGHT)
+        addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, button -> onClose())
+                .bounds(centerX - BUTTON_WIDTH / 2, startY + (BUTTON_HEIGHT + SPACING) * 2 + SPACING * 2, BUTTON_WIDTH, BUTTON_HEIGHT)
                 .build());
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        super.render(context, mouseX, mouseY, delta);
-        context.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, 20, 0xFFFFFF);
+    public void extractRenderState(GuiGraphicsExtractor extractor, int mouseX, int mouseY, float delta) {
+        super.extractRenderState(extractor, mouseX, mouseY, delta);
+        // Draw centered title using manual width calculation
+        int titleWidth = this.font.width(this.title);
+        extractor.text(this.font, this.title, (this.width - titleWidth) / 2, 20, 0xFFFFFF, true);
     }
 
     @Override
-    public void close() {
-        this.client.setScreen(parent);
+    public void onClose() {
+        this.minecraft.setScreen(parent);
     }
 
-    private static Text toggleLabel(String key, boolean value) {
-        return Text.translatable(key)
+    private static Component toggleLabel(String key, boolean value) {
+        return Component.translatable(key)
                 .append(": ")
-                .append(value ? ScreenTexts.ON : ScreenTexts.OFF);
+                .append(value ? CommonComponents.OPTION_ON : CommonComponents.OPTION_OFF);
     }
 }
