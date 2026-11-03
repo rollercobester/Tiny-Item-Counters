@@ -1,8 +1,8 @@
 package qoby.tiny_item_counters.mixin.client;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix3x2fStack;
 import org.spongepowered.asm.mixin.Mixin;
@@ -13,8 +13,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import qoby.tiny_item_counters.TinyItemCountersConfig;
 
-// 26.1+: unobfuscated Mojang names — no refmap needed, @Shadow resolves at compile time
-@Mixin(DrawContext.class)
+// 26.1+: GuiGraphics was renamed to GuiGraphicsExtractor; unobfuscated so @Shadow resolves at compile time
+@Mixin(GuiGraphicsExtractor.class)
 public abstract class GuiGraphicsMixin {
 
     // Mojang name: pose() (was getMatrices() in Yarn 1.21.6)
@@ -48,7 +48,8 @@ public abstract class GuiGraphicsMixin {
      * Cancels vanilla draw and redraws scaled.
      * Anchor is fixed at slot bottom-right (x+17, y+17); drawX/drawY are derived from it.
      */
-    @Inject(method = "itemCount(Lnet/minecraft/client/gui/Font;Lnet/minecraft/world/item/ItemStack;IILjava/lang/String;)V", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "itemCount(Lnet/minecraft/client/gui/Font;Lnet/minecraft/world/item/ItemStack;IILjava/lang/String;)V",
+            at = @At("HEAD"), cancellable = true)
     private void tinyItemCounters$renderCountScaled(Font font, ItemStack stack, int x, int y, String countText,
             CallbackInfo ci) {
         if (!TinyItemCountersConfig.shrinkItemCount) return;
@@ -75,7 +76,7 @@ public abstract class GuiGraphicsMixin {
         matrices.translate(-anchorX, -anchorY);
 
         // 26.1 Mojang: text() (was drawText() in Yarn 1.21.6); returns void
-        ((DrawContext) (Object) this).text(font, text, drawX, drawY, 0xFFFFFFFF, true);
+        ((GuiGraphicsExtractor) (Object) this).text(font, text, drawX, drawY, 0xFFFFFFFF, true);
 
         matrices.popMatrix();
         ci.cancel();

@@ -56,9 +56,8 @@ public class ConfigScreen extends Screen {
     @Override
     public void extractRenderState(GuiGraphicsExtractor extractor, int mouseX, int mouseY, float delta) {
         super.extractRenderState(extractor, mouseX, mouseY, delta);
-        // Draw centered title using manual width calculation
-        int titleWidth = this.font.width(this.title);
-        extractor.text(this.font, this.title, (this.width - titleWidth) / 2, 20, 0xFFFFFF, true);
+        // centeredText() is the 26.1 replacement for drawCenteredString()
+        extractor.centeredText(this.font, this.title, this.width / 2, 20, 0xFFFFFF);
     }
 
     @Override

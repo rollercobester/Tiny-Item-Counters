@@ -34,9 +34,8 @@ dependencies {
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 	// No mappings line: 26.1+ ships unobfuscated with Mojang's own names
-	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-
-	// 26.1+: use plain implementation/compileOnly instead of modImplementation/modCompileOnly
+	// 26.1+: all dependencies use plain implementation, not modImplementation
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 	implementation "com.terraformersmc:modmenu:${project.modmenu_version}"
 }
